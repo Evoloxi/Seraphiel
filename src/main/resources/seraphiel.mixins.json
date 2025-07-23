@@ -1,0 +1,14 @@
+{
+  "compatibilityLevel": "JAVA_8",
+  "package": "me.evo.seraphiel.mixins",
+  "mixins": [
+    "EntityPlayerSPMixin",
+    "GuiIngameMixin",
+    "GuiTextFieldMixin",
+    "MinecraftMixin",
+    "NetMixin",
+    "WorldMixin",
+    "ChatHoverAuxMixin",
+    "GuiNewChatMixin"
+  ]
+}

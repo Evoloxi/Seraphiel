@@ -1,11 +1,11 @@
 {
   "mixinConfigs": [
-    "examplemod.mixins.json"
+    "seraphiel.mixins.json"
   ],
   "entrypoints": [
-    "com.example.mod.ExampleMod"
+    "me.evo.seraphiel.Seraphiel"
   ],
   "hooks": [
-    "com.example.mod.hook.MinecraftHook"
+    "me.evo.seraphiel.hook.MinecraftHook"
   ]
 }

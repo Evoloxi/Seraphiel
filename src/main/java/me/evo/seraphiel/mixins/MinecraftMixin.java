@@ -1,4 +1,4 @@
-package com.example.mod.mixins;
+package me.evo.seraphiel.mixins;
 
 import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,3 +13,4 @@ public abstract class MinecraftMixin {
         System.out.println("Mixin Test");
     }
 }
+
