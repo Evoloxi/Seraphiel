@@ -1,0 +1,5 @@
+package me.evo.seraphiel.internal
+
+object BuildInfo {
+    const val TOKEN: String = "{{ token }}"
+}

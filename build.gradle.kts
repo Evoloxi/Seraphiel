@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.kotlin)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.shadow)
+    id("org.jetbrains.gradle.plugin.idea-ext") version "1.2"
+    id("net.kyori.blossom") version "2.1.0"
 }
 
 val group: String by project
@@ -14,6 +16,16 @@ val mcVersion: String by project
 val version: String by project
 val modId_: String by project
 
+sourceSets {
+    main {
+        blossom {
+            kotlinSources {
+                val input = file("src/main/resources/token.secret").readText()
+                property("token", input.trim())
+            }
+        }
+    }
+}
 
 weave {
     configure {

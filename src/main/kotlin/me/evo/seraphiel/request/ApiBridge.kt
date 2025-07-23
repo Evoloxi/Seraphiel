@@ -16,6 +16,7 @@ import me.evo.seraphiel.data.TimedCache
 import me.evo.seraphiel.Utils.debug
 import me.evo.seraphiel.api.Player
 import me.evo.seraphiel.api.PlayerDBResponse
+import me.evo.seraphiel.internal.BuildInfo
 import me.evo.seraphiel.json
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
@@ -44,8 +45,8 @@ object ApiBridge {
 
     val suscache = TimedCache<Uuid, Suspect>(800, 5.minutes)
     val statcache = TimedCache<Uuid, Player>(800, 15.minutes)
-    const val DATABASE_URL = "https://api.meownya.cloud/database/pull"
 
+    const val DATABASE_URL = "https://api.meownya.cloud/database/pull"
     suspend fun getPlayers(suspects: List<SuspectRequest>): List<Suspect> {
         val request = suspend sus@ {
             val (cached, uncached) = suspects.partition { it.uuid != null && suscache.contains(it.uuid) }
@@ -54,7 +55,7 @@ object ApiBridge {
             val jsonData = json.encodeToString(suspects.map { SuspectRequest(it.name, it.uuid) })
             val response = handler.executeRequest {
                 ktorClient.post(DATABASE_URL) {
-                    headers.append("Authorization", "{{TOKEN}}")
+                    headers.append("Authorization", BuildInfo.TOKEN)
                     setBody(jsonData)
                 }
             }
@@ -74,9 +75,10 @@ object ApiBridge {
             handler.executeRequest {
                 debug("Fetching stats for $uuid")
                 val res = ktorClient.get(STAT_URL) {
-                    headers.append("Authorization", "{{TOKEN}}")
+                    headers.append("Authorization", BuildInfo.TOKEN)
                     parameter("uuid", uuid.toString())
                 }
+
                 res.body<HypixelResponse>().player
             }?.also { statcache[uuid] = it }
         } catch (e: Exception) {
