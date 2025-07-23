@@ -6,6 +6,5 @@
     "me.evo.seraphiel.Seraphiel"
   ],
   "hooks": [
-    "me.evo.seraphiel.hook.MinecraftHook"
   ]
 }

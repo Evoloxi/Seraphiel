@@ -25,20 +25,27 @@ object ChatHook {
 
     @OptIn(ExperimentalUuidApi::class)
     @SubscribeEvent
-    fun onYapInLobby(event: ChatEvent.Receive) { // TODO: Refactor
-        if (!Display.isActive()) return
-        if (Utils.location != Location.LOBBY) return
+    fun onYapInLobby(event: ChatEvent.Receive) {
+        println(mc.currentScreen?.javaClass?.name)
+        if (!Display.isActive() || Utils.location != Location.LOBBY) return
+
         val message = event.message.unformattedText?.replace(Utils.color_codes, "") ?: return
+
         if (message.replace(rankRegex, "").containsAny(filter)) return
-        val sender = senderRegex.find(message)?.groupValues?.get(2)?.replace(rankRegex, "")?.replace(" ", "") ?: return
-        if (sender.contains("'sHypeTrain")) return
+
+        val sender = senderRegex.find(message)
+            ?.groupValues
+            ?.get(2)
+            ?.replace(rankRegex, "")
+            ?.replace(" ", "")
+            ?: return
+
+        if (sender.contains("'sHypeTrain")) return // Ignore Hype Train messages
+
         Utils.debug("Requesting stats for yapper: $sender in advance")
         Seraphiel.IO.async { ApiBridge.getPlayerStats(sender) }.then {
             if (it?.uuid != null) {
-                HoverStats.loaded[it.uuid] = it
-                HoverStats.loadedMojang[sender] = it.uuid
-                HoverStats.loading.remove(it.uuid)
-                HoverStats.loadingMojang.remove(sender)
+                HoverStats.addPrefetched(it)
             }
         }
     }
@@ -50,8 +57,8 @@ object ChatHook {
             val url = message.value
             if (url.contains("stats.hypixel.net")) {
                 mc.thePlayer.playSound("note.bassattack", 1f, 1.4f)
-                println("GAMELINK: $url")
             }
         }
     }
 }
+

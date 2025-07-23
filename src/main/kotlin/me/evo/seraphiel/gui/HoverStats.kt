@@ -10,6 +10,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import me.evo.seraphiel.CommandComponent
 import me.evo.seraphiel.Seraphiel
 import me.evo.seraphiel.Utils.debug
 import me.evo.seraphiel.request.ApiBridge
@@ -30,150 +31,236 @@ import kotlin.uuid.ExperimentalUuidApi
 @OptIn(ExperimentalUuidApi::class)
 object HoverStats {
 
-    private val mutex = Mutex()
-    val loaded = TimedCache<Uuid, Player>(200, 5.minutes)
-    val loading = LimitedSet<Uuid>(200)
-    private val invalid = LimitedSet<Uuid>(200)
-    val loadingMojang = LimitedSet<String>(200)
-    val loadedMojang = TimedCache<String, Uuid>(200, 60.minutes)
-    private val invalidMojang = LimitedSet<String>(200)
-    private var lastText: String? = null
-    private var lastHovered = TimeSource.Monotonic.markNow()
-    private val activationDuration get() = 0.4.seconds
-    private val ready get() = lastHovered.elapsedNow() > activationDuration && lastText != null
+    private const val CACHE_SIZE = 200
+    private val PLAYER_CACHE_DURATION = 5.minutes
+    private val UUID_CACHE_DURATION = 60.minutes
+    private val ACTIVATION_DURATION = 0.4.seconds
+
+    private val mutex          = Mutex()
+    private val playerCache    = TimedCache<Uuid, Player>(CACHE_SIZE, PLAYER_CACHE_DURATION)
+    private val loadingPlayers = LimitedSet<Uuid>(CACHE_SIZE)
+    private val invalidPlayers = LimitedSet<Uuid>(CACHE_SIZE)
+    private val loadingUuids   = LimitedSet<String>(CACHE_SIZE)
+    private val uuidCache      = TimedCache<String, Uuid>(CACHE_SIZE, UUID_CACHE_DURATION)
+    private val invalidUuids   = LimitedSet<String>(CACHE_SIZE)
+
+    private var lastHoveredText: String? = null
+    private var lastHoverTime = TimeSource.Monotonic.markNow()
+
+    private val isHoverReady: Boolean
+        get() = lastHoverTime.elapsedNow() > ACTIVATION_DURATION && lastHoveredText != null
+
+    fun addPrefetched(it: Player) {
+        uuidCache[it.displayName] = it.uuid ?: return
+        playerCache[it.uuid] = it
+        loadingPlayers -= it.uuid
+        loadingUuids -= it.displayName
+    }
 
     @JvmStatic
     fun updateHovered(component: IChatComponent?): IChatComponent? {
-        val chatStyle = component?.chatStyle ?: return component
-        val hoverEvent = chatStyle.chatHoverEvent ?: run {
-            lastText = null
+        val hoverEvent = component?.chatStyle?.chatHoverEvent ?: run {
+            resetHoverState()
             return component
         }
 
-        val text = hoverEvent.value?.formattedText ?: return component
+        val hoverText = hoverEvent.value?.formattedText ?: return component
+        updateHoverState(hoverText, component.chatStyle?.chatClickEvent)
 
-        if (text != lastText) {
-            debug("Hovered action changed: ${chatStyle.chatClickEvent?.value}")
-            lastText = text
-            lastHovered = TimeSource.Monotonic.markNow()
+        val clickEvent = component.chatStyle?.chatClickEvent ?: return component
+        val cmd = parseClickCommand(clickEvent) ?: return component
+
+        return if (cmd.isViewProfileCommand()) {
+            injectIntoComponent(component, hoverText, cmd.argument)
+        } else {
+            component
         }
-
-        val clickEvent = chatStyle.chatClickEvent ?: return component
-        val (cmd, arg) = clickEvent.value?.split(" ", limit = 2)?.takeIf { it.size == 2 } ?: return component
-
-        if (clickEvent.action == ClickEvent.Action.RUN_COMMAND && cmd.startsWith("/viewprofile")) {
-            return handleViewProfile(component, text, arg)
-        }
-
-        return component
     }
 
-    private fun handleViewProfile(component: IChatComponent, text: String, arg: String): IChatComponent {
-        val copy = component.createCopy()
-        val content = text.split("\n").toMutableList()
-        applyLastColor(content)
+    private fun resetHoverState() {
+        lastHoveredText = null
+    }
 
-        val uuid = loadedMojang[arg] ?: arg.takeIf { it.isUuid }?.let(Uuid::parse)
-        val hoverText = getHoverText(arg, uuid)
-        val insertIndex = content.indexOfFirst { it.containsAny("Click to view", "Click here to view") }
-            .coerceIn(1, content.size)
-        content.add(insertIndex, hoverText)
+    private fun updateHoverState(text: String, clickEvent: ClickEvent?) {
+        if (text != lastHoveredText) {
+            debug("Hover changed: ${clickEvent?.value}")
+            lastHoveredText = text
+            lastHoverTime = TimeSource.Monotonic.markNow()
+        }
+    }
 
-        uuid?.let { uid ->
-            loaded[uid]?.let { player ->
+    private fun parseClickCommand(clickEvent: ClickEvent): CommandComponent? {
+        if (clickEvent.action != ClickEvent.Action.RUN_COMMAND) return null
+
+        val parts = clickEvent.value?.split(" ", limit = 2) ?: return null
+        return if (parts.size == 2) CommandComponent(parts[0], parts[1]) else null
+    }
+
+    private fun injectIntoComponent(component: IChatComponent, text: String, playerArg: String): IChatComponent {
+        val modifiedComponent = component.createCopy()
+        val contentLines = text.split("\n").toMutableList()
+
+        patchContentColors(contentLines)
+
+        val uuid = resolvePlayerUuid(playerArg)
+        val statisticsText = generateStatisticsText(playerArg, uuid)
+
+        insertStatisticsIntoContent(contentLines, statisticsText)
+        addPrestige(contentLines, uuid)
+
+        modifiedComponent.chatStyle?.chatHoverEvent = HoverEvent(
+            HoverEvent.Action.SHOW_TEXT,
+            ChatComponentText(contentLines.joinToString("\n"))
+        )
+
+        return modifiedComponent
+    }
+
+    private fun patchContentColors(content: MutableList<String>) {
+        val defaultColor = extractLastColor(content) ?: "7"
+        content.replaceAll { line ->
+            if (line.contains("§")) line else "§$defaultColor$line"
+        }
+    }
+
+    private fun extractLastColor(content: List<String>): String? =
+        content.lastOrNull()
+            ?.substringAfterLast("§")
+            ?.takeIf { it.length == 1 }
+
+    private fun resolvePlayerUuid(playerArg: String): Uuid? =
+        uuidCache[playerArg] ?: playerArg.takeIf { it.isValidUuid() }?.let {
+            runCatching { Uuid.parse(it) }.getOrNull()
+        }
+
+    private fun generateStatisticsText(playerArg: String, uuid: Uuid?): String = when {
+        playerArg in loadingUuids ->
+            "§7Loading UUID${loadingAnimation}"
+
+        playerArg in invalidUuids || uuid in invalidPlayers ->
+            "§cError loading player statistics"
+
+        uuid in loadingPlayers ->
+            "§7Loading${loadingAnimation}"
+
+        uuid != null && uuid in playerCache ->
+            formatPlayerStatistics(playerCache[uuid]!!)
+
+        shouldStartLoading(uuid) -> {
+            initiateDataLoading(playerArg, uuid)
+            "§7Loading${loadingAnimation}"
+        }
+
+        else -> progressBar
+    }
+
+    private fun formatPlayerStatistics(player: Player): String =
+        "§8(${formatFKDR(player.fkdr)} §8| ${formatBBLR(player.bblr)} §8| ${formatWLR(player.wlr)}§8)"
+
+    private fun shouldStartLoading(uuid: Uuid?): Boolean =
+        isHoverReady || (uuid != null && uuid in ApiBridge.statcache)
+
+    private fun initiateDataLoading(playerArg: String, uuid: Uuid?) {
+        if (uuid == null) {
+            requestPlayerUuid(playerArg)
+        } else {
+            IO.launch { loadPlayerData(uuid) }
+        }
+    }
+
+    private fun insertStatisticsIntoContent(content: MutableList<String>, statisticsText: String) {
+        val insertIndex = content.indexOfFirst { line ->
+            line.containsAny("Click to view", "Click here to view")
+        }.coerceIn(1, content.size)
+
+        content.add(insertIndex, statisticsText)
+    }
+
+    private fun addPrestige(content: MutableList<String>, uuid: Uuid?) {
+        uuid?.let { playerId ->
+            playerCache[playerId]?.let { player ->
+                val prestigeText = prestige(player.stars)
+
                 if (content.any { it.contains("Friends for") }) {
-                    val last = content.lastIndex
-                    content[last] = content[last].replace("Click here to view", "Click here to view ${prestige(player.stars)}")
+                    val lastIndex = content.lastIndex
+                    content[lastIndex] = content[lastIndex].replace(
+                        "Click here to view",
+                        "Click here to view $prestigeText"
+                    )
                 } else {
-                    content[0] = "${prestige(player.stars)} ${content[0]}"
+                    content[0] = "$prestigeText ${content[0]}"
                 }
             }
         }
-
-        copy.chatStyle?.chatHoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, ChatComponentText(content.joinToString("\n")))
-        return copy
     }
 
-    private fun applyLastColor(content: MutableList<String>) {
-        val lastColor = content.lastOrNull()?.substringAfterLast("§")?.takeIf { it.length == 1 } ?: "7"
-        content.replaceAll { line -> if (line.contains("§")) line else "§$lastColor$line" }
-    }
+    private fun String.isValidUuid(): Boolean =
+        runCatching { Uuid.parse(this) }.isSuccess
 
-    private fun getHoverText(arg: String, uuid: Uuid?): String = when {
-        arg in loadingMojang -> "§7Loading Uuid$current"
-        arg in invalidMojang || uuid in invalid -> "§cAn error occurred while loading this player's statistics."
-        uuid in loading -> "§7Loading$current"
-        uuid != null && uuid in loaded -> loaded[uuid]!!.run {
-            "§8(${formatFKDR(fkdr)} §8| ${formatBBLR(bblr)} §8| ${formatWLR(wlr)}§8)"
-        }
-        ready || ((uuid ?: false) in ApiBridge.statcache) -> {
-            if (uuid == null) requestUuid(arg) else IO.launch { request(uuid) }
-            "§7Loading$current"
-        }
-        else -> drawBar()
-    }
+    private fun requestPlayerUuid(playerName: String) {
+        if (playerName in uuidCache || playerName in loadingUuids) return
 
-    private val String.isUuid: Boolean
-        get() = runCatching { Uuid.parse(this) }.isSuccess
-
-    private fun requestUuid(name: String) {
-        if (name in loadedMojang || name in loadingMojang) return
         IO.launch {
-            loadingMojang += name
+            loadingUuids += playerName
             try {
-                ApiBridge.getPlayerUUID(name)?.let {
-                    loadedMojang[name] = it
-                } ?: run {
-                    invalidMojang.add(name)
+                val uuid = ApiBridge.getPlayerUUID(playerName)
+                if (uuid != null) {
+                    uuidCache[playerName] = uuid
+                } else {
+                    invalidUuids.add(playerName)
                 }
             } catch (e: Exception) {
-                invalidMojang.add(name)
-                debug("Error fetching Uuid for $name: ${e.message}")
+                invalidUuids.add(playerName)
+                debug("Failed to fetch UUID for $playerName: ${e.message}")
             } finally {
-                loadingMojang -= name
+                loadingUuids -= playerName
             }
         }
     }
 
-
-    private fun drawBar(): String {
-        val bar = "Continue to hover for statistics."
-        val progress = ((lastHovered.elapsedNow() / activationDuration) * bar.length).toInt().coerceIn(0, bar.length)
-        return "§6${bar.take(progress)}§e${bar.drop(progress)}"
-    }
-
-    private val current: String
+    private val progressBar: String
         get() {
-            val states = listOf(".", "..", "...", "....", " ...", "  ..", "   .", "    ")
-            val index = ((Seraphiel.mc.thePlayer?.ticksExisted ?: 0) / 2) % states.size
-            return states[index]
+            val message = "Continue to hover for statistics."
+            val progress = ((lastHoverTime.elapsedNow() / ACTIVATION_DURATION) * message.length)
+                .toInt()
+                .coerceIn(0, message.length)
+
+            return "§6${message.take(progress)}§e${message.drop(progress)}"
         }
 
-    private suspend fun request(uuid: Uuid) {
+    private val loadingAnimation: String
+        get() {
+            val frames = listOf(".", "..", "...", "....", " ...", "  ..", "   .", "    ")
+            val ticksExisted = Seraphiel.mc.thePlayer?.ticksExisted ?: 0
+            val frameIndex = (ticksExisted / 2) % frames.size
+            return frames[frameIndex]
+        }
+
+    private suspend fun loadPlayerData(uuid: Uuid) {
         mutex.withLock {
-            if (uuid in loaded || uuid in loading || uuid in invalid) return
-            loading += uuid
+            if (uuid in playerCache || uuid in loadingPlayers || uuid in invalidPlayers) return
+            loadingPlayers += uuid
         }
 
         try {
-            //debug("Loading $uuid")
-            val result = ApiBridge.getPlayerStats(uuid)
+            val playerData = ApiBridge.getPlayerStats(uuid)
 
             mutex.withLock {
-                if (result != null) {
-                    loaded[uuid] = result
-                    loading -= uuid
+                if (playerData != null) {
+                    playerCache[uuid] = playerData
                 } else {
-                    invalid.add(uuid)
-                    loading -= uuid
+                    invalidPlayers.add(uuid)
                 }
+                loadingPlayers -= uuid
             }
-            debug("Removed $uuid from loading")
+
+            debug("Completed loading data for $uuid")
         } catch (e: Exception) {
             mutex.withLock {
-                loading -= uuid
+                loadingPlayers -= uuid
             }
-            debug("Error loading $uuid: ${e.message}")
+            debug("Failed to load data for $uuid: ${e.message}")
         }
     }
+
 }
