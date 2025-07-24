@@ -164,7 +164,7 @@ object HoverStats {
         if (uuid != null && (uuid in loadingPlayers || uuid in playerCache || uuid in invalidPlayers)) {
             return false
         }
-        if (playerArg in loadingUuids || playerArg in uuidCache || playerArg in invalidUuids) {
+        if (playerArg in loadingUuids || playerArg in invalidUuids) {
             return false
         }
 
