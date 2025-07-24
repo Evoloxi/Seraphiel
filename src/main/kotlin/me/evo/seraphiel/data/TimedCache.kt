@@ -1,6 +1,7 @@
 package me.evo.seraphiel.data
 
 import me.evo.seraphiel.Seraphiel
+import me.evo.seraphiel.now
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -17,8 +18,14 @@ class TimedCache<K : Any, V>(
     class CacheEntry<V>(val value: V, val expiryTime: TimeSource.Monotonic.ValueTimeMark)
 
     fun put(key: K, value: V) {
-        val expiryTime = Seraphiel.Companion.NOW + timeToLive
-        cache.putIfAbsent(key, CacheEntry(value, expiryTime))
+        val expiryTime = now + timeToLive
+
+        val existing = cache[key]
+        if (existing != null && existing.expiryTime.hasPassedNow()) {
+            cache.remove(key)
+        }
+
+        cache[key] = CacheEntry(value, expiryTime)
         if (size > maxSize) cache.remove(cache.entries.iterator().next().key)
     }
 
@@ -33,7 +40,7 @@ class TimedCache<K : Any, V>(
     }
 
     operator fun set(it: K, value: V) {
-        cache[it] = CacheEntry(value, Seraphiel.Companion.NOW + timeToLive)
+        cache[it] = CacheEntry(value, now + timeToLive)
         if (size > maxSize) cache.remove(cache.entries.iterator().next().key)
     }
 

@@ -42,6 +42,5 @@ class Seraphiel : ModInitializer {
 
         val LOGGER: Logger = LogManager.getLogger("Seraphiel")
         val mc: Minecraft by lazy { Minecraft.getMinecraft() }
-        val NOW = TimeSource.Monotonic.markNow()
     }
 }

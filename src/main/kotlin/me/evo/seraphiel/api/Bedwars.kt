@@ -27,9 +27,9 @@ data class Bedwars(
 
 @Serializable
 data class OverallBedwars(
-    @SerialName("Experience_new")                        val experienceNew              : Int     = 0,
+    @SerialName("Experience_new")                        val experienceNew              : Double  = 0.0,
     @SerialName("first_join_7")                          val firstJoin7                 : Boolean = true,
-    @SerialName("Experience")                            val experience                 : Int     = 0,
+    @SerialName("Experience")                            val experience                 : Double  = 0.0,
     @SerialName("games_played_bedwars_1")                val gamesPlayed1               : Int     = 0,
     @SerialName("winstreak")                             val winstreak                  : Int     = 0,
     @SerialName("void_kills_bedwars")                    val voidKills                  : Int     = 0,

@@ -34,7 +34,7 @@ object HoverStats {
     private const val CACHE_SIZE = 200
     private val PLAYER_CACHE_DURATION = 5.minutes
     private val UUID_CACHE_DURATION = 60.minutes
-    private val ACTIVATION_DURATION = 0.4.seconds
+    private val ACTIVATION_DURATION = 0.3.seconds
 
     private val mutex          = Mutex()
     private val playerCache    = TimedCache<Uuid, Player>(CACHE_SIZE, PLAYER_CACHE_DURATION)
@@ -47,7 +47,6 @@ object HoverStats {
     private var lastHoveredText: String? = null
     private var lastHoverTime = TimeSource.Monotonic.markNow()
 
-    private val requestedThisSession = mutableSetOf<Uuid>()
     private var lastHoveredUuid: Uuid? = null
 
     private val isHoverReady: Boolean
@@ -83,7 +82,6 @@ object HoverStats {
     private fun resetHoverState() {
         lastHoveredText = null
         lastHoveredUuid = null
-        requestedThisSession.clear()
     }
 
     private fun updateHoverState(text: String, clickEvent: ClickEvent?) {
@@ -91,7 +89,6 @@ object HoverStats {
             debug("Hover changed: ${clickEvent?.value}")
             lastHoveredText = text
             lastHoverTime = TimeSource.Monotonic.markNow()
-            requestedThisSession.clear()
         }
     }
 
@@ -171,10 +168,6 @@ object HoverStats {
             return false
         }
 
-        if (uuid != null && uuid in requestedThisSession) {
-            return false
-        }
-
         return isHoverReady || (uuid != null && uuid in ApiBridge.statcache)
     }
 
@@ -182,7 +175,6 @@ object HoverStats {
         if (uuid == null) {
             requestPlayerUuid(playerArg)
         } else {
-            requestedThisSession.add(uuid)
             IO.launch { loadPlayerData(uuid) }
         }
     }
@@ -258,20 +250,17 @@ object HoverStats {
     private suspend fun loadPlayerData(uuid: Uuid) {
         mutex.withLock {
             if (uuid in playerCache || uuid in loadingPlayers || uuid in invalidPlayers) {
-                debug("Skipping load for $uuid - already processed")
                 return
             }
             loadingPlayers += uuid
         }
 
         try {
-            debug("Starting to fetch stats for $uuid")
             val playerData = ApiBridge.getPlayerStats(uuid)
 
             mutex.withLock {
                 if (playerData != null) {
                     playerCache[uuid] = playerData
-                    debug("Successfully cached data for $uuid")
                 } else {
                     invalidPlayers.add(uuid)
                     debug("Marked $uuid as invalid - no data returned")
@@ -279,7 +268,6 @@ object HoverStats {
                 loadingPlayers -= uuid
             }
 
-            debug("Completed loading data for $uuid")
         } catch (e: Exception) {
             mutex.withLock {
                 loadingPlayers -= uuid
