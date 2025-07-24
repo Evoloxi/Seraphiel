@@ -66,6 +66,105 @@ dependencies {
 }
 
 tasks {
+
+    val lunar by registering(JavaExec::class) {
+        val lunarHome = File(System.getProperty("user.home"), ".lunarclient")
+
+        val jreDir = File(lunarHome, "jre")
+        val jreVersionDirs = jreDir.listFiles { file -> file.isDirectory }
+
+        if (jreVersionDirs == null || jreVersionDirs.isEmpty()) {
+            throw GradleException("No JRE directories found in ${jreDir.absolutePath}")
+        }
+
+        val jreHome = jreVersionDirs.first().listFiles {
+            file -> file.isDirectory
+        }?.first() ?: throw GradleException("No JRE home directory found in ${jreVersionDirs.first().absolutePath}")
+
+        val javaExecutable = File(jreHome, "bin/java")
+        if (!javaExecutable.exists()) {
+            throw GradleException("Java executable not found at ${javaExecutable.absolutePath}")
+        }
+
+        executable(javaExecutable)
+        mainClass.set("com.moonsworth.lunar.genesis.Genesis")
+
+        val gameCacheDir = File(lunarHome, "offline/multiver")
+        if (!gameCacheDir.exists()) {
+            throw GradleException("Lunar client game cache directory not found at ${gameCacheDir.absolutePath}")
+        }
+        workingDir = gameCacheDir
+
+        val loader = File(System.getProperty("user.home"), ".weave/weave-loader-1.0.0-b.3-all.jar").absolutePath
+
+        doFirst {
+            try {
+                println("Attempting to kill any running Java processes from Lunar Client...")
+                Runtime.getRuntime().exec(arrayOf("killall", "-9", javaExecutable.absolutePath)).waitFor()
+                Thread.sleep(100)
+            } catch (e: Throwable) {
+                println("Failed to kill previous processes: ${e.message}")
+            }
+        }
+
+        jvmArgs = listOf(
+            "--add-modules", "jdk.naming.dns",
+            "--add-exports", "jdk.naming.dns/com.sun.jndi.dns=java.naming",
+            "-Djna.boot.library.path=natives",
+            "-Dlog4j2.formatMsgNoLookups=true",
+            "--add-opens", "java.base/java.io=ALL-UNNAMED",
+            "-XX:+UseStringDeduplication",
+            "-Dichor.filteredGenesisSentries=.*lcqt.*|.*Some of your mods are incompatible with the game or each other.*",
+            "-Dlunar.webosr.url=file:index.html",
+            "-Xmx4124m",
+            "-Dichor.fabric.localModPath=${System.getProperty("user.home")}/.lunarclient/profiles/lunar/1.8/mods",
+            "-Djava.library.path=natives",
+            "-XX:-CreateCoredumpOnCrash",
+            "-XX:-CreateMinidumpOnCrash",
+            "-javaagent:$loader"
+        )
+
+        val jarFiles = workingDir.listFiles { _, name -> name?.endsWith(".jar") == true }?.filter {
+            listOf(
+                "common-0.1.0-SNAPSHOT-all.jar",
+                "genesis-0.1.0-SNAPSHOT-all.jar",
+                "legacy-0.1.0-SNAPSHOT-all.jar",
+                "lunar-lang.jar",
+                "lunar-emote.jar",
+                "lunar.jar",
+                "optifine-0.1.0-SNAPSHOT-all.jar"
+            ).contains(it.name)
+        }
+
+        if (jarFiles == null || jarFiles.isEmpty()) {
+            throw GradleException("Required JAR files not found in ${workingDir.absolutePath}")
+        }
+        classpath = files(*jarFiles.toTypedArray())
+
+        args = listOf(
+            "--version"           , "1.8.9",
+            "--launcherVersion"   , "3.4.6-ow",
+            "--accessToken"       , "${ environment["ACCESS_TOKEN"] ?: "0" }",
+            "--username"          , "${ environment["USERNAME"] ?: "Player" }",
+            "--uuid"              , "${ environment["UUID"] ?: UUID.randomUUID().toString().replace("-", "") }",
+            "--userProperties"    , "{}",
+            "--gameDir"           , File(System.getProperty("user.home"), ".minecraft").absolutePath,
+            "--texturesDir"       , File(lunarHome, "textures").absolutePath,
+            "--uiDir"             , File(lunarHome, "ui").absolutePath,
+            "--webosrDir"         , "${workingDir}/natives",
+            "--workingDirectory"  , ".",
+            "--classpathDir"      , ".",
+            "--width"             , "854",
+            "--height"            , "480",
+            "--assetIndex"        , "1.8",
+            "--launchId"          , "manual-launch-${UUID.randomUUID()}",
+            "--installationId"    , "${ environment["ACCESS_TOKEN"] ?: UUID.randomUUID() }",
+            "--ipcPort"           , "28190",
+            "--ichorClassPath"    , jarFiles.joinToString(",") { it.name },
+            "--ichorExternalFiles", "OptiFine_v1_8.jar"
+        )
+    }
+
     shadowJar {
         archiveClassifier.set("")
 

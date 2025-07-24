@@ -2,6 +2,7 @@ package me.evo.seraphiel.listener
 
 import kotlinx.coroutines.async
 import me.evo.seraphiel.Seraphiel
+import me.evo.seraphiel.Seraphiel.Companion.mc
 import me.evo.seraphiel.Utils
 import me.evo.seraphiel.Utils.debug
 import me.evo.seraphiel.data.TimedSet
@@ -66,8 +67,9 @@ object PlayerJoinListener {
                         }
                     }
                 }
-                Seraphiel.Companion.mc.addScheduledTask {
-                    Seraphiel.Companion.mc.thePlayer?.playSound("note.pling", 1.0f, 1.0f)
+                mc.addScheduledTask {
+                    mc.thePlayer?.playSound("note.pling", 0.6f, 1.65f)
+                    mc.thePlayer?.playSound("note.pling", 0.6f, 1.88f)
                 }
             }
         }
