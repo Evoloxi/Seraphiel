@@ -47,7 +47,7 @@ object ApiBridge {
     val statcache = TimedCache<Uuid, Player>(800, 15.minutes)
 
     const val DATABASE_URL = "https://api.meownya.cloud/database/pull"
-    suspend fun getPlayers(suspects: List<SuspectRequest>): List<Suspect> {
+    suspend fun checkPlayers(suspects: List<SuspectRequest>): List<Suspect> {
         val request = suspend sus@ {
             val (cached, uncached) = suspects.partition { it.uuid != null && suscache.contains(it.uuid) }
             val cachedPlayers = cached.mapNotNull { it.uuid }.mapNotNull { suscache[it] }
@@ -56,6 +56,7 @@ object ApiBridge {
             val response = handler.executeRequest {
                 ktorClient.post(DATABASE_URL) {
                     headers.append("Authorization", BuildInfo.TOKEN)
+                    headers.append("Content-Type", "application/json")
                     setBody(jsonData)
                 }
             }
@@ -121,7 +122,7 @@ object ApiBridge {
         }
     }
 
-    suspend fun getPlayer(suspect: SuspectRequest): Suspect? {
-        return getPlayers(listOf(suspect)).firstOrNull()?.also { suscache[it.uuid] = it }
+    suspend fun checkPlayer(suspect: SuspectRequest): Suspect? {
+        return checkPlayers(listOf(suspect)).firstOrNull()?.also { suscache[it.uuid] = it }
     }
 }

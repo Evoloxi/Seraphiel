@@ -6,7 +6,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeSource
 
-class TimedSet<J : Any>(private val maxSize: Int = 100, private val timeToLive: Duration = 5.minutes) : Iterable<J> {
+class TimedSet<J : Any>(val maxSize: Int = 100, private val timeToLive: Duration = 5.minutes) : Iterable<J> {
     private val set = ConcurrentHashMap<J, TimeSource.Monotonic.ValueTimeMark>()
 
     fun add(value: J) {

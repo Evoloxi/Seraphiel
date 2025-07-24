@@ -146,7 +146,7 @@ object HoverStats {
         uuid != null && uuid in playerCache ->
             formatPlayerStatistics(playerCache[uuid]!!)
 
-        shouldStartLoading(uuid) -> {
+        shouldStartLoading(playerArg, uuid) -> {
             initiateDataLoading(playerArg, uuid)
             "§7Loading${loadingAnimation}"
         }
@@ -157,8 +157,16 @@ object HoverStats {
     private fun formatPlayerStatistics(player: Player): String =
         "§8(${formatFKDR(player.fkdr)} §8| ${formatBBLR(player.bblr)} §8| ${formatWLR(player.wlr)}§8)"
 
-    private fun shouldStartLoading(uuid: Uuid?): Boolean =
-        isHoverReady || (uuid != null && uuid in ApiBridge.statcache)
+    private fun shouldStartLoading(playerArg: String, uuid: Uuid?): Boolean {
+        if (uuid != null && (uuid in loadingPlayers || uuid in playerCache || uuid in invalidPlayers)) {
+            return false
+        }
+        if (playerArg in loadingUuids || playerArg in uuidCache || playerArg in invalidUuids) {
+            return false
+        }
+
+        return isHoverReady || (uuid != null && uuid in ApiBridge.statcache)
+    }
 
     private fun initiateDataLoading(playerArg: String, uuid: Uuid?) {
         if (uuid == null) {
@@ -238,18 +246,24 @@ object HoverStats {
 
     private suspend fun loadPlayerData(uuid: Uuid) {
         mutex.withLock {
-            if (uuid in playerCache || uuid in loadingPlayers || uuid in invalidPlayers) return
+            if (uuid in playerCache || uuid in loadingPlayers || uuid in invalidPlayers) {
+                debug("Skipping load for $uuid - already processed")
+                return
+            }
             loadingPlayers += uuid
         }
 
         try {
+            debug("Starting to fetch stats for $uuid")
             val playerData = ApiBridge.getPlayerStats(uuid)
 
             mutex.withLock {
                 if (playerData != null) {
                     playerCache[uuid] = playerData
+                    debug("Successfully cached data for $uuid")
                 } else {
                     invalidPlayers.add(uuid)
+                    debug("Marked $uuid as invalid - no data returned")
                 }
                 loadingPlayers -= uuid
             }
@@ -258,6 +272,7 @@ object HoverStats {
         } catch (e: Exception) {
             mutex.withLock {
                 loadingPlayers -= uuid
+                invalidPlayers.add(uuid)
             }
             debug("Failed to load data for $uuid: ${e.message}")
         }
