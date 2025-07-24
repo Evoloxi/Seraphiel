@@ -11,6 +11,9 @@ import me.evo.seraphiel.request.ApiBridge
 import me.evo.seraphiel.request.SuspectRequest
 import me.evo.seraphiel.then
 import net.minecraft.entity.player.EntityPlayer
+import net.minecraft.event.ClickEvent
+import net.minecraft.event.HoverEvent
+import net.minecraft.util.ChatComponentText
 import net.weavemc.loader.api.event.SubscribeEvent
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -51,7 +54,17 @@ object PlayerJoinListener {
         }.then { cheaters ->
             if (cheaters != null && cheaters.isNotEmpty()) {
                 cheaters.forEach { cheater ->
-                    Utils.info("Found a cheater: §c${cheater.name}§7 (UUID: §6${cheater.uuid}§7)")
+                    Utils.chat("§7[§6Seraphiel§7] §7» §7Found a cheater: §c${cheater.name}§7\n§8(uuid: ${cheater.uuid})") {
+                        chatStyle.apply {
+                            chatClickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, "/viewprofile ${cheater.uuid}")
+                            chatHoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, ChatComponentText(
+                                """
+                                    §c${cheater.name}
+                                    §eClick to view their profile!
+                                    """.trimIndent()
+                            ))
+                        }
+                    }
                 }
                 Seraphiel.Companion.mc.addScheduledTask {
                     Seraphiel.Companion.mc.thePlayer?.playSound("note.pling", 1.0f, 1.0f)

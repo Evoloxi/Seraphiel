@@ -4,7 +4,6 @@ import me.evo.seraphiel.Seraphiel.Companion.LOGGER
 import me.evo.seraphiel.event.LocationChangeEvent
 import net.minecraft.util.ChatComponentText
 import net.weavemc.loader.api.event.EventBus
-import kotlin.time.TimeSource
 
 object Utils {
     var location = Location.IRRELEVANT
@@ -47,10 +46,10 @@ object Utils {
             LOGGER.info("[~$functionName] $message")
         }
     }
-    fun chat(message: String) {
+    fun chat(message: String, builder: ChatComponentText.() -> Unit = {}) {
         val mc = Seraphiel.mc
         mc.addScheduledTask {
-            mc.thePlayer?.addChatMessage(ChatComponentText(message))
+            mc.thePlayer?.addChatMessage(ChatComponentText(message).apply(builder))
         }
     }
     fun info(message: String) = chat("§7[§6Seraphiel§7] §7» §7$message")

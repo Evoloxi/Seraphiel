@@ -47,6 +47,9 @@ object HoverStats {
     private var lastHoveredText: String? = null
     private var lastHoverTime = TimeSource.Monotonic.markNow()
 
+    private val requestedThisSession = mutableSetOf<Uuid>()
+    private var lastHoveredUuid: Uuid? = null
+
     private val isHoverReady: Boolean
         get() = lastHoverTime.elapsedNow() > ACTIVATION_DURATION && lastHoveredText != null
 
@@ -68,10 +71,10 @@ object HoverStats {
         updateHoverState(hoverText, component.chatStyle?.chatClickEvent)
 
         val clickEvent = component.chatStyle?.chatClickEvent ?: return component
-        val cmd = parseClickCommand(clickEvent) ?: return component
+        val commandArgs = parseClickCommand(clickEvent) ?: return component
 
-        return if (cmd.isViewProfileCommand()) {
-            injectIntoComponent(component, hoverText, cmd.argument)
+        return if (commandArgs.isViewProfileCommand()) {
+            injectIntoComponent(component, hoverText, commandArgs.argument)
         } else {
             component
         }
@@ -79,6 +82,8 @@ object HoverStats {
 
     private fun resetHoverState() {
         lastHoveredText = null
+        lastHoveredUuid = null
+        requestedThisSession.clear()
     }
 
     private fun updateHoverState(text: String, clickEvent: ClickEvent?) {
@@ -86,6 +91,7 @@ object HoverStats {
             debug("Hover changed: ${clickEvent?.value}")
             lastHoveredText = text
             lastHoverTime = TimeSource.Monotonic.markNow()
+            requestedThisSession.clear()
         }
     }
 
@@ -165,6 +171,10 @@ object HoverStats {
             return false
         }
 
+        if (uuid != null && uuid in requestedThisSession) {
+            return false
+        }
+
         return isHoverReady || (uuid != null && uuid in ApiBridge.statcache)
     }
 
@@ -172,6 +182,7 @@ object HoverStats {
         if (uuid == null) {
             requestPlayerUuid(playerArg)
         } else {
+            requestedThisSession.add(uuid)
             IO.launch { loadPlayerData(uuid) }
         }
     }
@@ -277,5 +288,4 @@ object HoverStats {
             debug("Failed to load data for $uuid: ${e.message}")
         }
     }
-
 }
