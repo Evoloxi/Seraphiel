@@ -22,23 +22,25 @@ import kotlin.time.TimeSource
 class Seraphiel : ModInitializer {
 
     override fun init() {
-        EventBus.subscribe(GameStartListener)
-        EventBus.subscribe(PlayerJoinListener)
-        EventBus.subscribe(ChatHook)
+        setOf(
+            GameStartListener,
+            PlayerJoinListener,
+            ChatHook
+        ).forEach(EventBus::subscribe)
+
         CommandRegistry
-        println("Init!")
     }
 
     object IO : CoroutineScope {
         private val threadPool = Executors.newFixedThreadPool(16) as ThreadPoolExecutor
         private val dispatcher = threadPool.asCoroutineDispatcher()
-        override val coroutineContext = dispatcher + SupervisorJob() + CoroutineName("GABRIEL_IO")
+        override val coroutineContext = dispatcher + SupervisorJob() + CoroutineName("SERAPHIEL_IO")
     }
 
     companion object : CoroutineScope {
         private val threadPool = Executors.newFixedThreadPool(10) as ThreadPoolExecutor
         private val dispatcher = threadPool.asCoroutineDispatcher()
-        override val coroutineContext: CoroutineContext = dispatcher + SupervisorJob() + CoroutineName("GABRIEL")
+        override val coroutineContext: CoroutineContext = dispatcher + SupervisorJob() + CoroutineName("SERAPHIEL")
 
         val LOGGER: Logger = LogManager.getLogger("Seraphiel")
         val mc: Minecraft by lazy { Minecraft.getMinecraft() }

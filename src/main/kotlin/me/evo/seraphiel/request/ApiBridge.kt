@@ -99,12 +99,10 @@ object ApiBridge {
     val uuidcache = TimedCache<String /*name*/, Uuid>(5000, 8.hours)
 
     suspend fun getPlayerUUIDQuick(name: String): Uuid? {
-        val online = Seraphiel.mc.netHandler.playerInfoMap.associate { it.gameProfile.name to it.gameProfile.id.toKotlinUuid() }.onEach {
-            uuidcache[name] = it.value
+        val online = Seraphiel.mc.netHandler.playerInfoMap.associate { it.gameProfile.name to it.gameProfile.id.toKotlinUuid() }.onEach { (playerName, uuid) ->
+            uuidcache[playerName] = uuid
         }
-        return online[name] ?: uuidcache[name] ?: run {
-            getPlayerUUID(name)
-        }
+        return online[name] ?: uuidcache[name] ?: getPlayerUUID(name)
     }
 
     suspend fun getPlayerUUID(name: String): Uuid? {

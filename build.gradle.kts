@@ -68,6 +68,7 @@ dependencies {
 tasks {
 
     val lunar by registering(JavaExec::class) {
+        dependsOn("hotload")
         val lunarHome = File(System.getProperty("user.home"), ".lunarclient")
 
         val jreDir = File(lunarHome, "jre")
@@ -181,7 +182,7 @@ tasks {
 
     register("hotload") {
         dependsOn(shadowJar)
-        dependsOn(build)
+        //dependsOn(build)
         doLast {
             copy {
                 from(shadowJar)

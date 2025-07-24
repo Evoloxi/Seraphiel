@@ -20,6 +20,7 @@ object GameStartListener {
 
     @SubscribeEvent
     fun onGameStart(event: LocationChangeEvent) {
+        return
         println("onGameStart")
 
         val players: Collection<NetworkPlayerInfo> = Seraphiel.mc.netHandler.playerInfoMap

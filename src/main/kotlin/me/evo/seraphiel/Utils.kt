@@ -52,9 +52,9 @@ object Utils {
             mc.thePlayer?.addChatMessage(ChatComponentText(message).apply(builder))
         }
     }
-    fun info(message: String) = chat("§7[§6Seraphiel§7] §7» §7$message")
-    fun error(message: String) = chat("§7[§6Seraphiel§7] §7» §c§lERR: §r§7$message")
-    fun success(message: String) = chat("§7[§6Seraphiel§7] §7» §a$message")
+    fun info(message: String) = chat("§7[§d❁§7] §8» §7$message")
+    fun error(message: String) = chat("§7[§d❁§7] §8» §c§lERR: §r§7$message")
+    fun success(message: String) = chat("§7[§d❁§7] §8» §7» §a$message")
 }
 
 enum class Location {
