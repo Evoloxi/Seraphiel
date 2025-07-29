@@ -7,10 +7,10 @@ import me.evo.seraphiel.Utils
 import me.evo.seraphiel.data.TimedSet
 import me.evo.seraphiel.event.EntityListEvent
 import me.evo.seraphiel.gui.HoverStats
-import me.evo.seraphiel.now
+import me.evo.seraphiel.extension.now
 import me.evo.seraphiel.request.ApiBridge
 import me.evo.seraphiel.request.SuspectRequest
-import me.evo.seraphiel.then
+import me.evo.seraphiel.extension.then
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.event.ClickEvent
 import net.minecraft.event.HoverEvent

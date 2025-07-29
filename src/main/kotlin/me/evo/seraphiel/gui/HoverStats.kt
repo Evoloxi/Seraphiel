@@ -1,22 +1,11 @@
 package me.evo.seraphiel.gui
 
 import kotlinx.coroutines.launch
-import net.minecraft.event.ClickEvent
-import net.minecraft.event.HoverEvent
-import net.minecraft.util.ChatComponentText
-import net.minecraft.util.IChatComponent
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeSource
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import me.evo.seraphiel.CommandComponent
 import me.evo.seraphiel.Seraphiel
-import me.evo.seraphiel.Utils.debug
-import me.evo.seraphiel.request.ApiBridge
-import kotlin.uuid.Uuid
-
 import me.evo.seraphiel.Seraphiel.IO
+import me.evo.seraphiel.Utils.debug
 import me.evo.seraphiel.api.Player
 import me.evo.seraphiel.data.Formatter.formatBBLR
 import me.evo.seraphiel.data.Formatter.formatFKDR
@@ -25,7 +14,16 @@ import me.evo.seraphiel.data.Formatter.prestige
 import me.evo.seraphiel.data.LimitedSet
 import me.evo.seraphiel.data.TimedCache
 import me.evo.seraphiel.extension.containsAny
+import me.evo.seraphiel.extension.now
+import me.evo.seraphiel.request.ApiBridge
+import net.minecraft.event.ClickEvent
+import net.minecraft.event.HoverEvent
+import net.minecraft.util.ChatComponentText
+import net.minecraft.util.IChatComponent
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 // TODO: Refactor this ancient ass code
 @OptIn(ExperimentalUuidApi::class)
@@ -45,9 +43,9 @@ object HoverStats {
     private val invalidUuids   = LimitedSet<String>(CACHE_SIZE)
 
     private var lastHoveredText: String? = null
-    private var lastHoverTime = TimeSource.Monotonic.markNow()
+    private var lastHoverTime = now
 
-    private var lastHoveredUuid: Uuid? = null
+    private var lastHoveredCmd: String? = null
 
     private val isHoverReady: Boolean
         get() = lastHoverTime.elapsedNow() > ACTIVATION_DURATION && lastHoveredText != null
@@ -81,14 +79,21 @@ object HoverStats {
 
     private fun resetHoverState() {
         lastHoveredText = null
-        lastHoveredUuid = null
+        lastHoveredCmd = null
     }
 
     private fun updateHoverState(text: String, clickEvent: ClickEvent?) {
         if (text != lastHoveredText) {
-            debug("Hover changed: ${clickEvent?.value}")
+            val cmd = clickEvent?.value?.takeIf { it.isNotEmpty() }
+            if (cmd != null && cmd != lastHoveredCmd) {
+                lastHoveredCmd = cmd
+            } else {
+                lastHoveredCmd = null
+                return
+            }
+            debug("Hover changed: ${clickEvent.value}")
             lastHoveredText = text
-            lastHoverTime = TimeSource.Monotonic.markNow()
+            lastHoverTime = now
         }
     }
 

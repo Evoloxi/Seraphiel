@@ -1,6 +1,6 @@
 package me.evo.seraphiel.data
 
-import me.evo.seraphiel.now
+import me.evo.seraphiel.extension.now
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes

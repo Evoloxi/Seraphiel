@@ -4,12 +4,16 @@ mixin         = "0.8.5"
 serialization = "1.9.0"
 shadow        = "8.3.8"
 ktor          = "3.2.2"
+idea-ext      = "1.2"
+blossom       = "2.1.0"
 
 [plugins]
 kotlin               = { id = "org.jetbrains.kotlin.jvm"                 , version.ref = "kotlin" }
 weave                = { id = "net.weavemc.gradle"                       , version     = "1.0.0-b.3" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 shadow               = { id = "com.gradleup.shadow"                      , version.ref = "shadow" }
+idea-ext             = { id = "org.jetbrains.gradle.plugin.idea-ext"      , version.ref = "idea-ext" }
+blossom              = { id = "net.kyori.blossom"                         , version.ref = "blossom" }
 
 [libraries]
 mixin                           = { module = "org.spongepowered:mixin"                         , version.ref = "mixin" }
@@ -22,6 +26,7 @@ ktor-client-serialization       = { module = "io.ktor:ktor-serialization-kotlinx
 
 kotlinx-serialization-json      = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-serialization-core      = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "serialization" }
+
 
 [bundles]
 ktor = [

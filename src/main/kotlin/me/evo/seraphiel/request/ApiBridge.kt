@@ -17,7 +17,7 @@ import me.evo.seraphiel.Utils.debug
 import me.evo.seraphiel.api.Player
 import me.evo.seraphiel.api.PlayerDBResponse
 import me.evo.seraphiel.internal.BuildInfo
-import me.evo.seraphiel.json
+import me.evo.seraphiel.extension.json
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -41,7 +41,7 @@ object ApiBridge {
             }
         }
     }
-    private val handler = ApiHandler(ktorClient, 800)
+    private val handler = ApiHandler(ktorClient, 500)
 
     val suscache = TimedCache<Uuid, Suspect>(800, 5.minutes)
     val statcache = TimedCache<Uuid, Player>(800, 15.minutes)

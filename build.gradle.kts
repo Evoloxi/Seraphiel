@@ -7,8 +7,8 @@ plugins {
     alias(libs.plugins.kotlin)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.shadow)
-    id("org.jetbrains.gradle.plugin.idea-ext") version "1.2"
-    id("net.kyori.blossom") version "2.1.0"
+    alias(libs.plugins.idea.ext)
+    alias(libs.plugins.blossom)
 }
 
 val group: String by project

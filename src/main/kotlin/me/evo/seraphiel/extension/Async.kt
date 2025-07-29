@@ -1,4 +1,4 @@
-package me.evo.seraphiel
+package me.evo.seraphiel.extension
 
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,6 +38,3 @@ fun <T> Deferred<T>.then(callback: (T?) -> Unit) {
 
 val now get() = TimeSource.Monotonic.markNow()
 
-data class CommandComponent(val command: String, val argument: String) {
-    fun isViewProfileCommand(): Boolean = command.startsWith("/viewprofile")
-}

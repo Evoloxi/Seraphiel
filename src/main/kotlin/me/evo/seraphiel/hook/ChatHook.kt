@@ -9,7 +9,7 @@ import me.evo.seraphiel.event.ChatEvent
 import me.evo.seraphiel.extension.containsAny
 import me.evo.seraphiel.gui.HoverStats
 import me.evo.seraphiel.request.ApiBridge
-import me.evo.seraphiel.then
+import me.evo.seraphiel.extension.then
 import net.minecraft.event.ClickEvent
 import net.weavemc.loader.api.event.SubscribeEvent
 import org.lwjgl.opengl.Display
@@ -21,12 +21,11 @@ object ChatHook {
     private val senderRegex = Regex("\\[([^]]+)]\\s*([^:]+):")
     private val rankRegex = Regex("\\[.*]")
 
-    private val filter = listOf("vip", "rank", "pls", "skyblock", "gift", "plz")
+    private val filter = listOf("vip", "rank", "pls", "skyblock", "gift", "plz", "»")
 
     @OptIn(ExperimentalUuidApi::class)
     @SubscribeEvent
     fun onYapInLobby(event: ChatEvent.Receive) {
-        println(mc.currentScreen?.javaClass?.name)
         if (!Display.isActive() || Utils.location != Location.LOBBY) return
 
         val message = event.message.unformattedText?.replace(Utils.color_codes, "") ?: return

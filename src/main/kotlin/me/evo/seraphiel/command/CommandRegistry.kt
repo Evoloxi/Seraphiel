@@ -6,7 +6,7 @@ import kotlinx.coroutines.async
 import me.evo.seraphiel.Seraphiel
 import me.evo.seraphiel.Utils.chat
 import me.evo.seraphiel.Utils.info
-import me.evo.seraphiel.then
+import me.evo.seraphiel.extension.then
 import kotlin.uuid.ExperimentalUuidApi
 
 object CommandRegistry {

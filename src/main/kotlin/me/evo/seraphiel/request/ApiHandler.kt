@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.evo.seraphiel.Seraphiel
-import me.evo.seraphiel.tickerFlow
+import me.evo.seraphiel.extension.tickerFlow
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration.Companion.minutes
@@ -21,7 +21,7 @@ class ApiHandler(
     private var requestCount = 0
 
     init {
-        tickerFlow(1.minutes).onEach {
+        tickerFlow(5.minutes).onEach {
             mutex.withLock { requestCount = 0 }
             processQueue()
         }.launchIn(Seraphiel.IO)

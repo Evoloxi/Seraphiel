@@ -10,7 +10,7 @@ import me.evo.seraphiel.Utils.info
 import me.evo.seraphiel.event.LocationChangeEvent
 import me.evo.seraphiel.request.ApiBridge
 import me.evo.seraphiel.request.SuspectRequest
-import me.evo.seraphiel.then
+import me.evo.seraphiel.extension.then
 import net.minecraft.client.network.NetworkPlayerInfo
 import net.weavemc.loader.api.event.SubscribeEvent
 import kotlin.uuid.ExperimentalUuidApi

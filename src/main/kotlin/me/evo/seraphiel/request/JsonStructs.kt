@@ -5,7 +5,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import me.evo.seraphiel.api.Player
-import me.evo.seraphiel.json
+import me.evo.seraphiel.extension.json
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
